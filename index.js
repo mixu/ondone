@@ -1,8 +1,4 @@
 module.exports = function(tasks, onDone) {
-  if (arguments.length > 2) {
-    onDone = arguments[arguments.length - 1];
-    tasks = Array.prototype.slice.call(arguments, 0, -1);
-  }
   if (tasks) {
     tasks = (Array.isArray(tasks) ? tasks : [ tasks ]);
   }
@@ -22,11 +18,12 @@ module.exports = function(tasks, onDone) {
         if (++doneCalls > 1) {
           throw new Error('"done" callback called more than once!');
         }
-        done.apply(this, Array.prototype.slice.call(arguments));
+        // trigger the doneFn first, this makes nested ondone()'s complete as expected (inner first)
         if ((err || ++calls == total) && !triggered) {
           triggered = true;
           onDone(err);
         }
+        done.apply(this, Array.prototype.slice.call(arguments));
       }));
     };
   });

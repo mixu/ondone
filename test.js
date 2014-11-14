@@ -1,5 +1,6 @@
 var assert = require('assert'),
-    ondone = require('./index.js');
+    ondone = require('./index.js'),
+    async = require('async');
 
 describe('tests', function() {
 
@@ -85,27 +86,6 @@ describe('tests', function() {
     ondone(null, done);
   });
 
-  it('tasks may be passed as arguments, one task', function(done) {
-    var tasks = ondone(
-        function(done) { done(); }, function() {
-        done();
-      });
-
-    tasks.map(function(t) { t(function() {}); });
-  });
-
-  it('tasks may be passed as arguments, three tasks', function(done) {
-    var tasks = ondone(
-        function(done) { done(); },
-        function(done) { done(); },
-        function(done) { done(); },
-        function() {
-        done();
-      });
-
-    tasks.map(function(t) { t(function() {}); });
-  });
-
   it('tasks may return additional results as long as the first arg is err', function(done) {
     var results = [],
     tasks = ondone([
@@ -124,6 +104,61 @@ describe('tests', function() {
       });
     });
 
+  });
+
+  it('should work with async.js', function(done) {
+    var args = [],
+        completedFirst = false,
+        completedSecond = false,
+        tasks1 = [function(done) {
+          done(null, 'a');
+        }, function(done) {
+          done(null, 'b');
+        }],
+        tasks2 = [function(done) {
+          done(null, 'c');
+        }, function(done) {
+          done(null, 'd');
+        }];
+
+    tasks1 = ondone(tasks1, function() {
+          completedFirst = true;
+        });
+
+    tasks2 = ondone(tasks2, function() {
+          completedSecond = true;
+        });
+
+    async.parallel(ondone(tasks1.concat(tasks2),
+      function() {
+        assert.ok(completedFirst);
+        assert.ok(completedSecond);
+        done();
+      }), function(err, results) {
+      assert.deepEqual(results.sort(), [ 'a', 'b', 'c', 'd']);
+    });
+
+  });
+
+  it('should work with waterfall', function(done) {
+    var completedFirst = false,
+        completedSecond = false;
+
+    async.waterfall(
+        ondone([
+          function(callback){ callback(null, 'one', 'two'); },
+          function(arg1, arg2, callback){ callback(null, arg1 + arg2 + 'three');}
+          ], function() { completedFirst = true; })
+        .concat(
+          ondone([
+            function(arg1, callback){ callback(null, arg1 + 'done'); }
+          ], function() { completedSecond = true; }))
+      , function (err, result) {
+      assert.equal(result, 'onetwothreedone');
+      assert.ok(completedFirst);
+      assert.ok(completedSecond);
+      done();
+    });
   });
 
 });

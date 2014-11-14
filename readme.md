@@ -13,8 +13,6 @@ npm install --save ondone
 ```js
 var ondone = require('ondone');
 tasks = ondone(tasks, doneFn);
-// or
-tasks = ondone(function(done) {}, ..., doneFn);
 ```
 
 `ondone` accepts an array of `tasks` and a done function (`doneFn`). It returns an array of functions that can be passed to any async execution engine (like `miniq` or `async.js`). It adds the following functionality:
@@ -38,3 +36,36 @@ that is, the last argument to each task must be a `done` function. The `done` fu
 - `function done(err) {}`
 - `function done(err, arg) {}`
 - `function done(err, arg1, arg2, ...) {}`
+
+## Example
+
+Here, I'm taking a set of tasks and dividing it into two sets of tasks. When each set of tasks completes, the done function for that set is called:
+
+```js
+var completedFirst = false,
+    completedSecond = false;
+async.waterfall(
+    ondone([
+      function(callback){ callback(null, 'one', 'two'); },
+      function(arg1, arg2, callback){ callback(null, arg1 + arg2 + 'three');}
+      ], function() { completedFirst = true; })
+    .concat(
+      ondone([
+        function(arg1, callback){ callback(null, arg1 + 'done'); }
+      ], function() { completedSecond = true; }))
+  , function (err, result) {
+  assert.equal(result, 'onetwothreedone');
+  assert.ok(completedFirst);
+  assert.ok(completedSecond);
+});
+```
+
+# Related
+
+- https://github.com/ifit/waitress
+- https://github.com/eldargab/asyncloop
+- https://github.com/stagas/waits
+- https://github.com/taoyuan/cancelify
+- https://github.com/socialradar/hold
+- https://github.com/adamhalasz/nextjs
+- https://github.com/KoryNunn/wait-for
